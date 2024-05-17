@@ -132,6 +132,7 @@ public class TestAmsEniMoveResume implements Callable<Integer> {
 
             var attachment = ni.attachment();
             if (attachment != null) {
+                System.out.println("Interface is attached, detaching...");
                 String attachmentId = attachment.attachmentId();
                 var detachRequest = DetachNetworkInterfaceRequest.builder().attachmentId(attachmentId).build();
                 ec2.detachNetworkInterface(detachRequest);
@@ -253,10 +254,13 @@ public class TestAmsEniMoveResume implements Callable<Integer> {
 
         DescribeNetworkInterfacesResponse netInterfacesDescription = ec2.describeNetworkInterfaces(describeInterfaces);
         NetworkInterface ni = Iterables.getOnlyElement(netInterfacesDescription.networkInterfaces());
+
         while (predicate.apply(ni)) {
             System.out.println(message);
             try {
                 Thread.sleep(500);
+                DescribeNetworkInterfacesResponse updatedDescription = ec2.describeNetworkInterfaces(describeInterfaces);
+                ni = Iterables.getOnlyElement(updatedDescription.networkInterfaces());
             } catch (InterruptedException e) {
                 throw new RuntimeException(e);
             }
