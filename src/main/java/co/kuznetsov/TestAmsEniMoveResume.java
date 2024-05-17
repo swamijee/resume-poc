@@ -138,7 +138,7 @@ public class TestAmsEniMoveResume implements Callable<Integer> {
                 ec2.detachNetworkInterface(detachRequest);
             }
 
-            waitWhileEni(dbEniId, eni -> (eni.attachment() != null), "Waiting for DB ENI to detach from sleeper");
+            waitWhileEni(dbEniId, eni -> (eni.status() != NetworkInterfaceStatus.AVAILABLE), "Waiting for DB ENI to detach from sleeper");
 
             // Attaching it to sleeper instance
             System.out.println("Attaching eni to DB instance");
@@ -150,7 +150,7 @@ public class TestAmsEniMoveResume implements Callable<Integer> {
             System.out.println(ec2.attachNetworkInterface(attachRequest));
 
             System.out.println("Attach requested.");
-            waitWhileEni(dbEniId, eni -> (eni.attachment() == null), "Waiting for DB ENI to attach to DB");
+            waitWhileEni(dbEniId, eni -> (eni.status() != NetworkInterfaceStatus.ASSOCIATED), "Waiting for DB ENI to attach to DB");
         } catch (Exception e) {
             e.printStackTrace();
             throw e;
@@ -222,7 +222,7 @@ public class TestAmsEniMoveResume implements Callable<Integer> {
                 ec2.detachNetworkInterface(detachRequest);
             }
 
-            waitWhileEni(dbEniId, eni -> (eni.attachment() != null), "Waiting for detachment to be done");
+            waitWhileEni(dbEniId, eni -> (eni.status() != NetworkInterfaceStatus.AVAILABLE), "Waiting for detachment to be done");
 
             // Attaching it to sleeper instance
             var attachRequest = AttachNetworkInterfaceRequest.builder()
@@ -232,7 +232,7 @@ public class TestAmsEniMoveResume implements Callable<Integer> {
                             .build();
             ec2.attachNetworkInterface(attachRequest);
 
-            waitWhileEni(dbEniId, eni -> (eni.attachment() == null), "Waiting for ENI to attach to sleeper");
+            waitWhileEni(dbEniId, eni -> (eni.status() != NetworkInterfaceStatus.ASSOCIATED), "Waiting for ENI to attach to sleeper");
         }
         System.out.println("Done parking!");
     }
@@ -250,7 +250,7 @@ public class TestAmsEniMoveResume implements Callable<Integer> {
             ec2.detachNetworkInterface(detachRequest);
         }
 
-        waitWhileEni(sleeperEni, eni -> (eni.attachment() != null), "Waiting for sleeper ENI to be detached");
+        waitWhileEni(sleeperEni, eni -> (eni.status() != NetworkInterfaceStatus.AVAILABLE), "Waiting for sleeper ENI to be detached");
     }
 
     private void waitWhileEni(String eniId, Function<NetworkInterface, Boolean> predicate, String message) {
