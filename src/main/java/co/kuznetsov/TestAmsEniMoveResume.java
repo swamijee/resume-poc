@@ -200,7 +200,7 @@ public class TestAmsEniMoveResume implements Callable<Integer> {
                 .namespace("ASv2ResumeCanary")
                 .build();
         cw.putMetricData(dataRequest);
-        System.out.println("Posted metrics to CW!");
+        System.out.println("Posted metrics to CW: " + outcome);
     }
 
     private void parkEniWithASleeper() {

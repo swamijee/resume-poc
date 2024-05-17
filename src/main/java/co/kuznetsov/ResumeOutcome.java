@@ -28,4 +28,14 @@ public class ResumeOutcome {
     public boolean isFailure() {
         return failure;
     }
+
+    @Override
+    public String toString() {
+        return "ResumeOutcome{" +
+                "connectionDrop=" + connectionDrop +
+                ", failure=" + failure +
+                ", duration=" + duration +
+                ", clientInterrupt=" + clientInterrupt +
+                '}';
+    }
 }
