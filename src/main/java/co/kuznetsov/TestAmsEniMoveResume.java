@@ -150,7 +150,7 @@ public class TestAmsEniMoveResume implements Callable<Integer> {
             System.out.println(ec2.attachNetworkInterface(attachRequest));
 
             System.out.println("Attach requested.");
-            waitWhileEni(dbEniId, eni -> (eni.status() != NetworkInterfaceStatus.ASSOCIATED), "Waiting for DB ENI to attach to DB");
+            waitWhileEni(dbEniId, eni -> (eni.status() != NetworkInterfaceStatus.IN_USE), "Waiting for DB ENI to attach to DB");
         } catch (Exception e) {
             e.printStackTrace();
             throw e;
@@ -232,7 +232,7 @@ public class TestAmsEniMoveResume implements Callable<Integer> {
                             .build();
             ec2.attachNetworkInterface(attachRequest);
 
-            waitWhileEni(dbEniId, eni -> (eni.status() != NetworkInterfaceStatus.ASSOCIATED), "Waiting for ENI to attach to sleeper");
+            waitWhileEni(dbEniId, eni -> (eni.status() != NetworkInterfaceStatus.IN_USE), "Waiting for ENI to attach to sleeper");
         }
         System.out.println("Done parking!");
     }
@@ -263,12 +263,12 @@ public class TestAmsEniMoveResume implements Callable<Integer> {
             NetworkInterface ni = Iterables.getOnlyElement(netInterfacesDescription.networkInterfaces());
 
             if (!predicate.apply(ni)) {
-                System.out.println("Wait not required. Exiting.");
+                System.out.println("Wait not required. Exiting: " + ni.status());
                 return;
             }
 
             while (predicate.apply(ni)) {
-                System.out.println(message);
+                System.out.println(message + ": " + ni.status());
                 try {
                     Thread.sleep(500);
                     DescribeNetworkInterfacesResponse updatedDescription = ec2.describeNetworkInterfaces(describeInterfaces);
