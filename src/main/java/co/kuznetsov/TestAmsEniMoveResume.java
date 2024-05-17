@@ -254,22 +254,31 @@ public class TestAmsEniMoveResume implements Callable<Integer> {
     }
 
     private void waitWhileEni(String eniId, Function<NetworkInterface, Boolean> predicate, String message) {
-        Ec2Client ec2 = Ec2Client.builder().build();
-        DescribeNetworkInterfacesRequest describeInterfaces = DescribeNetworkInterfacesRequest.builder().
-                networkInterfaceIds(eniId).build();
+        try {
+            Ec2Client ec2 = Ec2Client.builder().build();
+            DescribeNetworkInterfacesRequest describeInterfaces = DescribeNetworkInterfacesRequest.builder().
+                    networkInterfaceIds(eniId).build();
 
-        DescribeNetworkInterfacesResponse netInterfacesDescription = ec2.describeNetworkInterfaces(describeInterfaces);
-        NetworkInterface ni = Iterables.getOnlyElement(netInterfacesDescription.networkInterfaces());
+            DescribeNetworkInterfacesResponse netInterfacesDescription = ec2.describeNetworkInterfaces(describeInterfaces);
+            NetworkInterface ni = Iterables.getOnlyElement(netInterfacesDescription.networkInterfaces());
 
-        while (predicate.apply(ni)) {
-            System.out.println(message);
-            try {
-                Thread.sleep(500);
-                DescribeNetworkInterfacesResponse updatedDescription = ec2.describeNetworkInterfaces(describeInterfaces);
-                ni = Iterables.getOnlyElement(updatedDescription.networkInterfaces());
-            } catch (Exception e) {
-                throw new RuntimeException(e);
+            if (!predicate.apply(ni)) {
+                System.out.println("Wait not required. Exiting.");
+                return;
             }
+
+            while (predicate.apply(ni)) {
+                System.out.println(message);
+                try {
+                    Thread.sleep(500);
+                    DescribeNetworkInterfacesResponse updatedDescription = ec2.describeNetworkInterfaces(describeInterfaces);
+                    ni = Iterables.getOnlyElement(updatedDescription.networkInterfaces());
+                } catch (Exception e) {
+                    throw new RuntimeException(e);
+                }
+            }
+        } catch (Exception e) {
+            e.printStackTrace();
         }
     }
 
