@@ -117,6 +117,8 @@ public class TestAmsEniMoveResume implements Callable<Integer> {
             // By no outcomeRef is surely set
         } catch (InterruptedException e) {
             return new ResumeOutcome(false, false, -1, true);
+        } catch (Exception e) {
+            Exceptions.capture(e);
         }
         return outcomeRef.get();
     }
@@ -152,8 +154,7 @@ public class TestAmsEniMoveResume implements Callable<Integer> {
             System.out.println("Attach requested.");
             waitWhileEni(dbEniId, eni -> (eni.status() != NetworkInterfaceStatus.IN_USE), "Waiting for DB ENI to attach to DB");
         } catch (Exception e) {
-            e.printStackTrace();
-            throw e;
+            Exceptions.capture(e);
         }
     }
 
@@ -200,7 +201,9 @@ public class TestAmsEniMoveResume implements Callable<Integer> {
                         clientInterrupt
                 ).namespace("ASv2ResumeCanary")
                 .build();
-        cw.putMetricData(dataRequest);
+        Threads.retryUntilSuccess(() -> {
+            cw.putMetricData(dataRequest);
+        });
         System.out.println("Posted metrics to CW: " + outcome);
     }
 
@@ -218,22 +221,28 @@ public class TestAmsEniMoveResume implements Callable<Integer> {
 
             var attachment = ni.attachment();
             if (attachment != null) {
-                String attachmentId = attachment.attachmentId();
-                var detachRequest = DetachNetworkInterfaceRequest.builder().attachmentId(attachmentId).build();
-                ec2.detachNetworkInterface(detachRequest);
+                Threads.retryUntilSuccess(() -> {
+                    String attachmentId = attachment.attachmentId();
+                    var detachRequest = DetachNetworkInterfaceRequest.builder().attachmentId(attachmentId).build();
+                    ec2.detachNetworkInterface(detachRequest);
+                });
             }
 
             waitWhileEni(dbEniId, eni -> (eni.status() != NetworkInterfaceStatus.AVAILABLE), "Waiting for detachment to be done");
 
             // Attaching it to sleeper instance
-            var attachRequest = AttachNetworkInterfaceRequest.builder()
-                            .deviceIndex(1)
-                            .networkInterfaceId(dbEniId)
-                            .instanceId(sleeperInstanceId)
-                            .build();
-            ec2.attachNetworkInterface(attachRequest);
+            Threads.retryUntilSuccess(() -> {
+                var attachRequest = AttachNetworkInterfaceRequest.builder()
+                        .deviceIndex(1)
+                        .networkInterfaceId(dbEniId)
+                        .instanceId(sleeperInstanceId)
+                        .build();
+                ec2.attachNetworkInterface(attachRequest);
+            });
 
             waitWhileEni(dbEniId, eni -> (eni.status() != NetworkInterfaceStatus.IN_USE), "Waiting for ENI to attach to sleeper");
+        } catch (Exception e) {
+            Exceptions.capture(e);
         }
         System.out.println("Done parking!");
     }
@@ -246,9 +255,11 @@ public class TestAmsEniMoveResume implements Callable<Integer> {
         var attachment = ni.attachment();
 
         if (attachment != null) {
-            String attachmentId = attachment.attachmentId();
-            var detachRequest = DetachNetworkInterfaceRequest.builder().attachmentId(attachmentId).build();
-            ec2.detachNetworkInterface(detachRequest);
+            Threads.retryUntilSuccess(() -> {
+                String attachmentId = attachment.attachmentId();
+                var detachRequest = DetachNetworkInterfaceRequest.builder().attachmentId(attachmentId).build();
+                ec2.detachNetworkInterface(detachRequest);
+            });
         }
 
         waitWhileEni(sleeperEni, eni -> (eni.status() != NetworkInterfaceStatus.AVAILABLE), "Waiting for sleeper ENI to be detached");
