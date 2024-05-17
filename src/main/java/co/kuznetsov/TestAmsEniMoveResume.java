@@ -249,7 +249,7 @@ public class TestAmsEniMoveResume implements Callable<Integer> {
             ec2.detachNetworkInterface(detachRequest);
         }
 
-        waitWhileEni(dbEniId, eni -> (eni.attachment() != null), "Waiting for sleeper ENI to be detached");
+        waitWhileEni(sleeperEni, eni -> (eni.attachment() != null), "Waiting for sleeper ENI to be detached");
     }
 
     private void waitWhileEni(String eniId, Function<NetworkInterface, Boolean> predicate, String message) {
