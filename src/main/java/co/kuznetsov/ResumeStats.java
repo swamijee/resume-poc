@@ -28,4 +28,12 @@ public class ResumeStats {
     public Long getResumeDurationHighRes() {
         return highRes != null ? highRes.getDuration() : null;
     }
+
+    @Override
+    public String toString() {
+        return "ResumeStats{" +
+                "normal=" + normal +
+                ", highRes=" + highRes +
+                '}';
+    }
 }
