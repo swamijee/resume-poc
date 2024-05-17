@@ -34,8 +34,10 @@ public class DoorKnockRunnable implements Runnable {
         boolean drop = false;
 
         while ((System.currentTimeMillis() - start) < maxWaitMillis) {
+            System.out.println("Connecting to DB...");
             try (var conn = DriverManager.getConnection("jdbc://mysql://" + endpoint + ":" + port, properties)) {
                 conn.createStatement().execute("SELECT 1");
+                System.out.println("Success!");
             } catch (SQLException e) {
                 System.out.println("SQLException: " + e.getMessage());
                 System.out.println("SQLState: " + e.getSQLState());

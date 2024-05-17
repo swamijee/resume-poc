@@ -74,7 +74,9 @@ public class TestAmsEniMoveResume implements Callable<Integer> {
         Class.forName("com.mysql.cj.jdbc.Driver").newInstance();
 
         try {
+            int run = 0;
             while (!Thread.interrupted()) {
+                System.out.println("Run: " + (run++));
                 parkEniWithASleeper();
                 ResumeOutcome outcome = resume();
                 reportMetrics(outcome);
@@ -87,6 +89,7 @@ public class TestAmsEniMoveResume implements Callable<Integer> {
     }
 
     private ResumeOutcome resume() {
+        System.out.println("Starting resume...");
         AtomicReference<ResumeOutcome> outcomeRef = new AtomicReference<>(null);
         Thread connectionThread = new Thread(new DoorKnockRunnable(
                 outcomeRef,
@@ -128,7 +131,7 @@ public class TestAmsEniMoveResume implements Callable<Integer> {
                 ec2.detachNetworkInterface(detachRequest);
             }
 
-            waitWhileEni(dbEniId, eni -> (eni.attachment() != null));
+            waitWhileEni(dbEniId, eni -> (eni.attachment() != null), "Waiting for ENI to detach from sleeper");
 
             // Attaching it to sleeper instance
             var attachRequest = AttachNetworkInterfaceRequest.builder()
@@ -137,7 +140,7 @@ public class TestAmsEniMoveResume implements Callable<Integer> {
                     .instanceId(dbInstanceId)
                     .build();
             ec2.attachNetworkInterface(attachRequest);
-            waitWhileEni(dbEniId, eni -> (eni.attachment() == null));
+            waitWhileEni(dbEniId, eni -> (eni.attachment() == null), "Waiting for ENI to attach to DB");
         }
     }
 
@@ -184,9 +187,11 @@ public class TestAmsEniMoveResume implements Callable<Integer> {
                 .namespace("ASv2ResumeCanary")
                 .build();
         cw.putMetricData(dataRequest);
+        System.out.println("Posted metrics to CW!");
     }
 
     private void parkEniWithASleeper() {
+        System.out.println("Parking ENI with a sleeper instance... ");
         try (Ec2Client ec2 = Ec2Client.builder().build()) {
             // Making sure DB ENI is detached
             DescribeNetworkInterfacesRequest describeInterfaces = DescribeNetworkInterfacesRequest.builder().
@@ -202,7 +207,7 @@ public class TestAmsEniMoveResume implements Callable<Integer> {
                 ec2.detachNetworkInterface(detachRequest);
             }
 
-            waitWhileEni(dbEniId, eni -> (eni.attachment() != null));
+            waitWhileEni(dbEniId, eni -> (eni.attachment() != null), "Waiting for detachment to be done");
 
             // Attaching it to sleeper instance
             var attachRequest = AttachNetworkInterfaceRequest.builder()
@@ -212,11 +217,12 @@ public class TestAmsEniMoveResume implements Callable<Integer> {
                             .build();
             ec2.attachNetworkInterface(attachRequest);
 
-            waitWhileEni(dbEniId, eni -> (eni.attachment() == null));
+            waitWhileEni(dbEniId, eni -> (eni.attachment() == null), "Waiting for ENI to attach to sleeper");
         }
+        System.out.println("Done parking!");
     }
 
-    private void waitWhileEni(String eniId, Function<NetworkInterface, Boolean> predicate) {
+    private void waitWhileEni(String eniId, Function<NetworkInterface, Boolean> predicate, String message) {
         Ec2Client ec2 = Ec2Client.builder().build();
         DescribeNetworkInterfacesRequest describeInterfaces = DescribeNetworkInterfacesRequest.builder().
                 networkInterfaceIds(eniId).build();
@@ -224,6 +230,7 @@ public class TestAmsEniMoveResume implements Callable<Integer> {
         DescribeNetworkInterfacesResponse netInterfacesDescription = ec2.describeNetworkInterfaces(describeInterfaces);
         NetworkInterface ni = Iterables.getOnlyElement(netInterfacesDescription.networkInterfaces());
         while (predicate.apply(ni)) {
+            System.out.println(message);
             try {
                 Thread.sleep(500);
             } catch (InterruptedException e) {
