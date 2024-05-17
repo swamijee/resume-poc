@@ -16,9 +16,9 @@ import java.util.concurrent.Callable;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Function;
 
-@CommandLine.Command(name = "test-eni-move", mixinStandardHelpOptions = true,
-        description = "Test ENI moves")
-public class TestAmsEniMoveResume implements Callable<Integer> {
+@CommandLine.Command(name = "test-ip-move", mixinStandardHelpOptions = true,
+        description = "Test IP moves")
+public class TestAmsIpMoveResume implements Callable<Integer> {
     private static final long MAX_RESUME_WAIT_MILLIS = 90000;
     @CommandLine.Option(
             names = {"-e", "--endpoint"},
@@ -68,12 +68,12 @@ public class TestAmsEniMoveResume implements Callable<Integer> {
             required = true)
     private String sleeperEni;
 
-    public TestAmsEniMoveResume() {
+    public TestAmsIpMoveResume() {
     }
 
     public static void main(String... args) throws Exception {
         new Driver();
-        int exitCode = new CommandLine(new TestAmsEniMoveResume()).execute(args);
+        int exitCode = new CommandLine(new TestAmsIpMoveResume()).execute(args);
         System.exit(exitCode);
     }
 
@@ -84,8 +84,8 @@ public class TestAmsEniMoveResume implements Callable<Integer> {
             while (!Thread.interrupted()) {
                 System.out.println("Run: " + (run++));
                 parkEniWithASleeper();
-                ResumeStats stats = resume();
-                reportMetrics(stats);
+                ResumeOutcome outcome = resume();
+                reportMetrics(outcome);
             }
             return 0;
         } catch (Exception e) {
@@ -94,11 +94,9 @@ public class TestAmsEniMoveResume implements Callable<Integer> {
         }
     }
 
-    private ResumeStats resume() {
+    private ResumeOutcome resume() {
         System.out.println("Starting resume...");
         AtomicReference<ResumeOutcome> outcomeRef = new AtomicReference<>(null);
-        AtomicReference<ResumeOutcome> outcomeHfRef = new AtomicReference<>(null);
-
         Thread connectionThread = new Thread(new DoorKnockRunnable(
                 outcomeRef,
                 endpoint,
@@ -107,33 +105,22 @@ public class TestAmsEniMoveResume implements Callable<Integer> {
                 password,
                 MAX_RESUME_WAIT_MILLIS
         ));
-        Thread connectionThreadHF = new Thread(new HFDoorKnockRunnable(
-                outcomeHfRef,
-                endpoint,
-                port,
-                username,
-                password,
-                MAX_RESUME_WAIT_MILLIS
-        ));
-
         connectionThread.start();
-        connectionThreadHF.start();
 
         try {
             moveEniToDbInstance();
             connectionThread.join(MAX_RESUME_WAIT_MILLIS);
-            connectionThreadHF.join(MAX_RESUME_WAIT_MILLIS);
             if (connectionThread.isAlive()) {
                 connectionThread.interrupt();
                 outcomeRef.set(new ResumeOutcome(true, true, MAX_RESUME_WAIT_MILLIS, false));
             }
             // By no outcomeRef is surely set
         } catch (InterruptedException e) {
-            return new ResumeStats(new ResumeOutcome(false, false, -1, true), null);
+            return new ResumeOutcome(false, false, -1, true);
         } catch (Exception e) {
             Exceptions.capture(e);
         }
-        return new ResumeStats(outcomeRef.get(), outcomeHfRef.get());
+        return outcomeRef.get();
     }
 
     private void moveEniToDbInstance() {
@@ -171,7 +158,7 @@ public class TestAmsEniMoveResume implements Callable<Integer> {
         }
     }
 
-    private void reportMetrics(ResumeStats outcome) {
+    private void reportMetrics(ResumeOutcome outcome) {
         CloudWatchClient cw = CloudWatchClient.builder().build();
         var now = Instant.now();
 
@@ -201,13 +188,7 @@ public class TestAmsEniMoveResume implements Callable<Integer> {
                 .build();
         var resumeDuration = MetricDatum.builder()
                 .metricName("resumeDuration")
-                .value((double) outcome.getResumeDuration())
-                .timestamp(now)
-                .unit(StandardUnit.MILLISECONDS)
-                .build();
-        var resumeDurationHighRes = MetricDatum.builder()
-                .metricName("resumeDurationHighRes")
-                .value((double) outcome.getResumeDurationHighRes())
+                .value((double) outcome.getDuration())
                 .timestamp(now)
                 .unit(StandardUnit.MILLISECONDS)
                 .build();
@@ -215,7 +196,6 @@ public class TestAmsEniMoveResume implements Callable<Integer> {
                 .metricData(
                         connectionDrop,
                         resumeDuration,
-                        resumeDurationHighRes,
                         success,
                         failure,
                         clientInterrupt
