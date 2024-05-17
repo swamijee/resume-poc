@@ -61,6 +61,12 @@ public class TestAmsEniMoveResume implements Callable<Integer> {
             required = true)
     private String dbEniId;
 
+    @CommandLine.Option(
+            names = {"-sleeper-eni", "--sleeper-eni-id"},
+            description = "Sleeper ENI ID",
+            required = true)
+    private String sleeperEni;
+
     public TestAmsEniMoveResume() {
     }
 
@@ -193,6 +199,8 @@ public class TestAmsEniMoveResume implements Callable<Integer> {
     private void parkEniWithASleeper() {
         System.out.println("Parking ENI with a sleeper instance... ");
         try (Ec2Client ec2 = Ec2Client.builder().build()) {
+            detachSleeperEni(ec2);
+
             // Making sure DB ENI is detached
             DescribeNetworkInterfacesRequest describeInterfaces = DescribeNetworkInterfacesRequest.builder().
                     networkInterfaceIds(dbEniId).build();
@@ -220,6 +228,22 @@ public class TestAmsEniMoveResume implements Callable<Integer> {
             waitWhileEni(dbEniId, eni -> (eni.attachment() == null), "Waiting for ENI to attach to sleeper");
         }
         System.out.println("Done parking!");
+    }
+
+    private void detachSleeperEni(Ec2Client ec2) {
+        DescribeNetworkInterfacesRequest describeSleeperEni = DescribeNetworkInterfacesRequest.builder().
+                networkInterfaceIds(sleeperEni).build();
+        DescribeNetworkInterfacesResponse netInterfacesDescription = ec2.describeNetworkInterfaces(describeSleeperEni);
+        NetworkInterface ni = Iterables.getOnlyElement(netInterfacesDescription.networkInterfaces());
+        var attachment = ni.attachment();
+
+        if (attachment != null) {
+            String attachmentId = attachment.attachmentId();
+            var detachRequest = DetachNetworkInterfaceRequest.builder().attachmentId(attachmentId).build();
+            ec2.detachNetworkInterface(detachRequest);
+        }
+
+        waitWhileEni(dbEniId, eni -> (eni.attachment() != null), "Waiting for sleeper ENI to be detached");
     }
 
     private void waitWhileEni(String eniId, Function<NetworkInterface, Boolean> predicate, String message) {
