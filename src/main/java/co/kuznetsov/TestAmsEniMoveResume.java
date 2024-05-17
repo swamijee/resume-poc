@@ -219,7 +219,7 @@ public class TestAmsEniMoveResume implements Callable<Integer> {
 
             // Attaching it to sleeper instance
             var attachRequest = AttachNetworkInterfaceRequest.builder()
-                            .deviceIndex(3)
+                            .deviceIndex(1)
                             .networkInterfaceId(dbEniId)
                             .instanceId(sleeperInstanceId)
                             .build();
