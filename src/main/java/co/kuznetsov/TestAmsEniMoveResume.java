@@ -2,6 +2,7 @@ package co.kuznetsov;
 
 
 import com.google.common.collect.Iterables;
+import com.mysql.cj.jdbc.Driver;
 import picocli.CommandLine;
 import software.amazon.awssdk.services.cloudwatch.CloudWatchClient;
 import software.amazon.awssdk.services.cloudwatch.model.MetricDatum;
@@ -70,15 +71,14 @@ public class TestAmsEniMoveResume implements Callable<Integer> {
     public TestAmsEniMoveResume() {
     }
 
-    public static void main(String... args) {
+    public static void main(String... args) throws Exception {
+        new Driver();
         int exitCode = new CommandLine(new TestAmsEniMoveResume()).execute(args);
         System.exit(exitCode);
     }
 
     @Override
     public Integer call() throws Exception {
-        Class.forName("com.mysql.cj.jdbc.Driver").newInstance();
-
         try {
             int run = 0;
             while (!Thread.interrupted()) {
