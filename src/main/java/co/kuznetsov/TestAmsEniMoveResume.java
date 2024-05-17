@@ -198,7 +198,8 @@ public class TestAmsEniMoveResume implements Callable<Integer> {
                         success,
                         failure,
                         clientInterrupt
-                ).build();
+                ).namespace("ASv2ResumeCanary")
+                .build();
         cw.putMetricData(dataRequest);
         System.out.println("Posted metrics to CW: " + outcome);
     }
