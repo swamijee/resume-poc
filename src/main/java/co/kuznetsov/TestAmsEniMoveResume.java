@@ -141,6 +141,7 @@ public class TestAmsEniMoveResume implements Callable<Integer> {
             waitWhileEni(dbEniId, eni -> (eni.attachment() != null), "Waiting for ENI to detach from sleeper");
 
             // Attaching it to sleeper instance
+            System.out.println("Attaching eni to DB instance");
             var attachRequest = AttachNetworkInterfaceRequest.builder()
                     .deviceIndex(1)
                     .networkInterfaceId(dbEniId)
@@ -148,6 +149,10 @@ public class TestAmsEniMoveResume implements Callable<Integer> {
                     .build();
             ec2.attachNetworkInterface(attachRequest);
             waitWhileEni(dbEniId, eni -> (eni.attachment() == null), "Waiting for ENI to attach to DB");
+
+        } catch (Exception e) {
+            e.printStackTrace();
+            throw e;
         }
     }
 
