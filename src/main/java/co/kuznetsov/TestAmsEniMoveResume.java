@@ -147,7 +147,7 @@ public class TestAmsEniMoveResume implements Callable<Integer> {
                     .networkInterfaceId(dbEniId)
                     .instanceId(dbInstanceId)
                     .build();
-            ec2.attachNetworkInterface(attachRequest);
+            System.out.println(ec2.attachNetworkInterface(attachRequest));
 
             System.out.println("Attach requested.");
             waitWhileEni(dbEniId, eni -> (eni.attachment() == null), "Waiting for DB ENI to attach to DB");
