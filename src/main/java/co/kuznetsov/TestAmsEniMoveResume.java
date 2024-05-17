@@ -192,13 +192,13 @@ public class TestAmsEniMoveResume implements Callable<Integer> {
                 .unit(StandardUnit.MILLISECONDS)
                 .build();
         var dataRequest = PutMetricDataRequest.builder()
-                .metricData(connectionDrop)
-                .metricData(resumeDuration)
-                .metricData(success)
-                .metricData(failure)
-                .metricData(clientInterrupt)
-                .namespace("ASv2ResumeCanary")
-                .build();
+                .metricData(
+                        connectionDrop,
+                        resumeDuration,
+                        success,
+                        failure,
+                        clientInterrupt
+                ).build();
         cw.putMetricData(dataRequest);
         System.out.println("Posted metrics to CW: " + outcome);
     }
