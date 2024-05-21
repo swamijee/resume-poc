@@ -1,8 +1,5 @@
 package co.kuznetsov;
 
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.TimeUnit;
-
 public class Threads {
 
     private static final long THREAD_WAIT_FOR_INTERRUPT_MILLIS = 5000;

@@ -13,6 +13,7 @@ import software.amazon.awssdk.services.ec2.model.*;
 
 import java.time.Instant;
 import java.util.concurrent.Callable;
+import java.util.concurrent.TimeoutException;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Function;
 
@@ -20,6 +21,7 @@ import java.util.function.Function;
         description = "Test ENI moves")
 public class TestAmsEniMoveResume implements Callable<Integer> {
     private static final long MAX_RESUME_WAIT_MILLIS = 90000;
+    private static final long MAX_ENI_OP_WAIT_MILLIS = 120000;
     @CommandLine.Option(
             names = {"-e", "--endpoint"},
             description = "Endpoint",
@@ -79,19 +81,19 @@ public class TestAmsEniMoveResume implements Callable<Integer> {
 
     @Override
     public Integer call() throws Exception {
-        try {
-            int run = 0;
-            while (!Thread.interrupted()) {
+        int run = 0;
+        while (!Thread.interrupted()) {
+            try {
                 System.out.println("Run: " + (run++));
                 parkEniWithASleeper();
                 ResumeStats stats = resume();
                 reportMetrics(stats);
+            } catch (Exception e) {
+                Exceptions.capture(e);
+                Threads.sleep(1000);
             }
-            return 0;
-        } catch (Exception e) {
-            e.printStackTrace();
-            return -1;
         }
+        return 0;
     }
 
     private ResumeStats resume() {
@@ -128,15 +130,16 @@ public class TestAmsEniMoveResume implements Callable<Integer> {
                 outcomeRef.set(new ResumeOutcome(true, true, MAX_RESUME_WAIT_MILLIS, false));
             }
             // By no outcomeRef is surely set
+            return new ResumeStats(outcomeRef.get(), outcomeHfRef.get());
         } catch (InterruptedException e) {
             return new ResumeStats(new ResumeOutcome(false, false, -1, true), null);
         } catch (Exception e) {
             Exceptions.capture(e);
+            return new ResumeStats(new ResumeOutcome(false, true, -1, true), null);
         }
-        return new ResumeStats(outcomeRef.get(), outcomeHfRef.get());
     }
 
-    private void moveEniToDbInstance() {
+    private void moveEniToDbInstance() throws Exception {
         try (Ec2Client ec2 = Ec2Client.builder().build()) {
             // Making sure DB ENI is detached
             DescribeNetworkInterfacesRequest describeInterfaces = DescribeNetworkInterfacesRequest.builder().
@@ -153,7 +156,7 @@ public class TestAmsEniMoveResume implements Callable<Integer> {
                 ec2.detachNetworkInterface(detachRequest);
             }
 
-            waitWhileEni(dbEniId, eni -> (eni.status() != NetworkInterfaceStatus.AVAILABLE), "Waiting for DB ENI to detach from sleeper");
+            waitWhileEni(dbEniId, eni -> (eni.status() != NetworkInterfaceStatus.AVAILABLE), "Waiting for DB ENI to detach from sleeper", MAX_ENI_OP_WAIT_MILLIS);
 
             // Attaching it to sleeper instance
             System.out.println("Attaching eni to DB instance");
@@ -165,9 +168,10 @@ public class TestAmsEniMoveResume implements Callable<Integer> {
             System.out.println(ec2.attachNetworkInterface(attachRequest));
 
             System.out.println("Attach requested.");
-            waitWhileEni(dbEniId, eni -> (eni.status() != NetworkInterfaceStatus.IN_USE), "Waiting for DB ENI to attach to DB");
+            waitWhileEni(dbEniId, eni -> (eni.status() != NetworkInterfaceStatus.IN_USE), "Waiting for DB ENI to attach to DB", MAX_ENI_OP_WAIT_MILLIS);
         } catch (Exception e) {
             Exceptions.capture(e);
+            throw e;
         }
     }
 
@@ -227,7 +231,7 @@ public class TestAmsEniMoveResume implements Callable<Integer> {
         System.out.println("Posted metrics to CW: " + outcome);
     }
 
-    private void parkEniWithASleeper() {
+    private void parkEniWithASleeper() throws Exception {
         System.out.println("Parking ENI with a sleeper instance... ");
         try (Ec2Client ec2 = Ec2Client.builder().build()) {
             detachSleeperEni(ec2);
@@ -248,7 +252,7 @@ public class TestAmsEniMoveResume implements Callable<Integer> {
                 });
             }
 
-            waitWhileEni(dbEniId, eni -> (eni.status() != NetworkInterfaceStatus.AVAILABLE), "Waiting for detachment to be done");
+            waitWhileEni(dbEniId, eni -> (eni.status() != NetworkInterfaceStatus.AVAILABLE), "Waiting for detachment to be done", MAX_ENI_OP_WAIT_MILLIS);
 
             // Attaching it to sleeper instance
             Threads.retryUntilSuccess(() -> {
@@ -260,14 +264,15 @@ public class TestAmsEniMoveResume implements Callable<Integer> {
                 ec2.attachNetworkInterface(attachRequest);
             });
 
-            waitWhileEni(dbEniId, eni -> (eni.status() != NetworkInterfaceStatus.IN_USE), "Waiting for ENI to attach to sleeper");
+            waitWhileEni(dbEniId, eni -> (eni.status() != NetworkInterfaceStatus.IN_USE), "Waiting for ENI to attach to sleeper", MAX_ENI_OP_WAIT_MILLIS);
         } catch (Exception e) {
             Exceptions.capture(e);
+            throw e;
         }
         System.out.println("Done parking!");
     }
 
-    private void detachSleeperEni(Ec2Client ec2) {
+    private void detachSleeperEni(Ec2Client ec2) throws Exception {
         DescribeNetworkInterfacesRequest describeSleeperEni = DescribeNetworkInterfacesRequest.builder().
                 networkInterfaceIds(sleeperEni).build();
         DescribeNetworkInterfacesResponse netInterfacesDescription = ec2.describeNetworkInterfaces(describeSleeperEni);
@@ -282,10 +287,10 @@ public class TestAmsEniMoveResume implements Callable<Integer> {
             });
         }
 
-        waitWhileEni(sleeperEni, eni -> (eni.status() != NetworkInterfaceStatus.AVAILABLE), "Waiting for sleeper ENI to be detached");
+        waitWhileEni(sleeperEni, eni -> (eni.status() != NetworkInterfaceStatus.AVAILABLE), "Waiting for sleeper ENI to be detached", MAX_ENI_OP_WAIT_MILLIS);
     }
 
-    private void waitWhileEni(String eniId, Function<NetworkInterface, Boolean> predicate, String message) {
+    private void waitWhileEni(String eniId, Function<NetworkInterface, Boolean> predicate, String message, long maxWait) throws TimeoutException {
         try {
             Ec2Client ec2 = Ec2Client.builder().build();
             DescribeNetworkInterfacesRequest describeInterfaces = DescribeNetworkInterfacesRequest.builder().
@@ -299,7 +304,11 @@ public class TestAmsEniMoveResume implements Callable<Integer> {
                 return;
             }
 
+            long startedWaiting = System.currentTimeMillis();
             while (predicate.apply(ni)) {
+                if ((System.currentTimeMillis() - startedWaiting) > maxWait) {
+                    throw new TimeoutException("Operation [" + message + "] didn't complete for more than " + maxWait + "ms. Aborting wait.");
+                }
                 System.out.println(message + ": " + ni.status());
                 try {
                     Thread.sleep(500);
@@ -310,7 +319,7 @@ public class TestAmsEniMoveResume implements Callable<Integer> {
                 }
             }
         } catch (Exception e) {
-            e.printStackTrace();
+            Exceptions.capture(e);
         }
     }
 
