@@ -63,6 +63,7 @@ public class TestAmsResumeCanary implements Callable<Integer> {
                 System.out.println("Run: " + (run++));
                 boolean ready = driveQueriesUntilSuccessful();
                 if (ready) {
+                    System.out.println("Success!");
                     stayIdle(inactivitySeconds);
                     ResumeStats stats = resume();
                     reportMetrics(stats);
