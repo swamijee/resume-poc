@@ -323,7 +323,7 @@ public class TestAmsResumeCanaryV2Worker implements Runnable {
                 cwl.putLogEvents(
                     PutLogEventsRequest.builder()
                             .logGroupName("ASv2AMSAutoPauseCanary")
-                            .logGroupName("resume-outcomes.log")
+                            .logStreamName("resume-outcomes.log")
                             .logEvents(inputLogEvents)
                             .build()
 
