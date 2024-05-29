@@ -76,7 +76,7 @@ public class TestAmsResumeCanaryV2Worker implements Runnable {
 
     private void provisionACluster(AtomicReference<DBCluster> clusterRef, AtomicReference<DBInstance> instanceRef) {
         try (RdsClient rds = RdsClient.builder().endpointOverride(new URI(canary.rdsEndpoint)).build()) {
-            String suffix = RandomStringUtils.randomAlphanumeric(6);
+            String suffix = RandomStringUtils.randomAlphanumeric(6).toLowerCase();
             String clusterIdentifier = "persist-ams-ap-canary-c-" + suffix;
             String instanceIdentifier = "persist-ams-ap-canary-i-" + suffix;
 
