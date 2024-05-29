@@ -8,7 +8,9 @@ import software.amazon.awssdk.services.cloudwatch.model.MetricDatum;
 import software.amazon.awssdk.services.cloudwatch.model.PutMetricDataRequest;
 import software.amazon.awssdk.services.cloudwatch.model.StandardUnit;
 
+import java.time.Duration;
 import java.time.Instant;
+import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.Callable;
@@ -85,39 +87,14 @@ public class TestAmsResumeCanaryV2 implements Callable<Integer> {
             t.start();
         }
 
+        Instant started = Instant.now();
         while (!Thread.interrupted()) {
-            System.out.println("Started " + clusters + " canary workers");
+            System.out.println("Running " + clusters + " canary workers for " +
+                    Duration.between(started, Instant.now()).truncatedTo(ChronoUnit.SECONDS));
             Threads.sleep(10000);
         }
 
         return 0;
-//        int run = 0;
-//        while (!Thread.interrupted()) {
-//            try {
-//                System.out.println("Run: " + (run++));
-//                boolean ready = driveQueriesUntilSuccessful();
-//                if (ready) {
-//                    System.out.println("Success!");
-//                    stayIdle(inactivitySeconds);
-//                    ResumeStats stats = resume();
-//                    reportMetrics(stats);
-//                } else {
-//                    System.out.println("Not ready in time. Starting over.");
-//                }
-//            } catch (Exception e) {
-//                Exceptions.capture(e);
-//                Threads.sleep(1000);
-//            }
-//        }
-//        return 0;
     }
-
-    private void stayIdle(int inactivitySeconds) {
-        for (int i = 0; i < inactivitySeconds; i++) {
-            Threads.sleep(1000);
-            System.out.println("Chilling out for " + i + " seconds...");
-        }
-    }
-
 
 }

@@ -45,18 +45,20 @@ public class TestAmsResumeCanaryV2Worker implements Runnable {
         String endpoint = clusterRef.get().endpoint();
         int port = clusterRef.get().port();
 
+        String instanceId = instanceRef.get().dbInstanceIdentifier();
+
         int run = 0;
         while (!Thread.interrupted()) {
             try {
-                System.out.println("Run [" + endpoint + "]: " + (run++));
-                boolean ready = driveQueriesUntilSuccessful(endpoint, port);
+                System.out.println("Run [" + instanceId + "]: " + (run++));
+                boolean ready = driveQueriesUntilSuccessful(instanceRef, endpoint, port);
                 if (ready) {
-                    System.out.println("Success [" + endpoint + "]");
-                    stayIdle(canary.inactivitySeconds);
-                    ResumeStats stats = resume(endpoint, port);
+                    System.out.println("Success [" + instanceId + "]");
+                    stayIdle(instanceId, canary.inactivitySeconds);
+                    ResumeStats stats = resume(instanceRef, endpoint, port);
                     reportMetrics(instanceRef, stats);
                 } else {
-                    System.out.println("Not ready in time [" + endpoint + "]. Starting over.");
+                    System.out.println("Not ready in time [" + instanceId + "]. Starting over.");
                 }
             } catch (Exception e) {
                 Exceptions.capture(e);
@@ -65,10 +67,10 @@ public class TestAmsResumeCanaryV2Worker implements Runnable {
         }
     }
 
-    private void stayIdle(int inactivitySeconds) {
+    private void stayIdle(String instanceId, int inactivitySeconds) {
         for (int i = 0; i < inactivitySeconds; i++) {
             Threads.sleep(1000);
-            System.out.println("Chilling out for " + i + " seconds...");
+            System.out.println("Instance [" + instanceId + "] is chilling out for " + i + " seconds...");
         }
     }
 
@@ -120,8 +122,8 @@ public class TestAmsResumeCanaryV2Worker implements Runnable {
         }
     }
 
-    private boolean driveQueriesUntilSuccessful(String endpoint, int port) {
-        System.out.println("Probing the endpoint....");
+    private boolean driveQueriesUntilSuccessful(AtomicReference<DBInstance> instanceRef, String endpoint, int port) {
+        System.out.println("Probing the endpoint [" + instanceRef.get().dbInstanceIdentifier() + "]");
         AtomicReference<ResumeOutcome> outcomeHfRef = new AtomicReference<>(null);
 
         Thread connectionThreadHF = new Thread(new HFDoorKnockRunnable(
@@ -150,8 +152,8 @@ public class TestAmsResumeCanaryV2Worker implements Runnable {
         }
     }
 
-    private ResumeStats resume(String endpoint, int port) {
-        System.out.println("Starting resume...");
+    private ResumeStats resume(AtomicReference<DBInstance> instanceRef, String endpoint, int port) {
+        System.out.println("Starting resume [" + instanceRef.get().dbInstanceIdentifier() + "]...");
         AtomicReference<ResumeOutcome> outcomeRef = new AtomicReference<>(null);
         AtomicReference<ResumeOutcome> outcomeHfRef = new AtomicReference<>(null);
 
