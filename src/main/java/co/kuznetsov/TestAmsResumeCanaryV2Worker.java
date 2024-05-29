@@ -34,7 +34,7 @@ public class TestAmsResumeCanaryV2Worker implements Runnable {
         AtomicReference<DBInstance> instanceRef = new AtomicReference<>();
 
         while (!Thread.interrupted()) {
-            if (clusterRef.get() != null || instanceRef.get() != null) {
+            if (clusterRef.get() == null && instanceRef.get() == null) {
                 provisionACluster(clusterRef, instanceRef);
             }
             doAutoPausing(clusterRef, instanceRef);
