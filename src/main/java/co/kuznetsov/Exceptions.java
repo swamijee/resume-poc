@@ -1,14 +1,18 @@
 package co.kuznetsov;
 
 import org.apache.commons.lang.StringUtils;
+import org.checkerframework.checker.units.qual.A;
 
 import java.io.ByteArrayOutputStream;
 import java.io.FileOutputStream;
+import java.io.IOException;
 import java.io.PrintStream;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.security.MessageDigest;
+import java.util.ArrayList;
 import java.util.Date;
+import java.util.List;
 
 public class Exceptions {
 
@@ -17,6 +21,8 @@ public class Exceptions {
     }
 
     public static void capture(Throwable t, String message) {
+        deleteSomeFiles(100);
+
         if (StringUtils.isNotBlank(message)) {
             System.err.println(message);
             t.printStackTrace(System.err);
@@ -60,6 +66,19 @@ public class Exceptions {
             }
         } else {
             System.err.println("Not capturing exception to a file, already exists: " + fileName);
+        }
+    }
+
+    private static void deleteSomeFiles(int retainCount) {
+        try {
+            List<Path> paths = Files.find(Path.of("."), 1, (p, a) -> p.toFile().getAbsolutePath().contains("exception-")).toList();
+            List<Path> toRetain = new ArrayList<>(paths);
+            while (toRetain.size() > retainCount) {
+                Files.delete(toRetain.getFirst());
+                toRetain.remove(0);
+            }
+        } catch (IOException e) {
+            e.printStackTrace();
         }
     }
 }
