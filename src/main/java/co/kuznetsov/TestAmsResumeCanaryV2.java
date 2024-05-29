@@ -45,7 +45,7 @@ public class TestAmsResumeCanaryV2 implements Callable<Integer> {
     @CommandLine.Option(
             names = {"-rds", "--rds-endpoint"},
             description = "RDS API endpoint",
-            required = false)
+            required = true)
     String rdsEndpoint;
 
     @CommandLine.Option(
