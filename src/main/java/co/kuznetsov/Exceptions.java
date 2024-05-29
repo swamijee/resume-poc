@@ -74,7 +74,7 @@ public class Exceptions {
             List<Path> paths = Files.find(Path.of("."), 1, (p, a) -> p.toFile().getAbsolutePath().contains("exception-")).toList();
             List<Path> toRetain = new ArrayList<>(paths);
             while (toRetain.size() > retainCount) {
-                Files.delete(toRetain.getFirst());
+                Files.delete(toRetain.get(0));
                 toRetain.remove(0);
             }
         } catch (IOException e) {
