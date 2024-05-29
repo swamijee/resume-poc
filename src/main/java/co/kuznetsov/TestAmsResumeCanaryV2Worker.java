@@ -110,6 +110,7 @@ public class TestAmsResumeCanaryV2Worker implements Runnable {
                 instanceRef.set(createdInstance.dbInstance());
             });
 
+            System.out.println("Waiting for instance to be ready: " + instanceIdentifier);
             rds.waiter().waitUntilDBInstanceAvailable(DescribeDbInstancesRequest.builder()
                     .dbInstanceIdentifier(instanceIdentifier)
                     .build());
