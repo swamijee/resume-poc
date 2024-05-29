@@ -89,6 +89,8 @@ public class TestAmsResumeCanaryV2Worker implements Runnable {
                                 .maxCapacity(8.0)
                                 .build())
                         .vpcSecurityGroupIds(canary.securityGroup)
+                        .masterUsername(canary.username)
+                        .masterUserPassword(canary.password)
                         .databaseName(canary.database)
                         .build();
 
