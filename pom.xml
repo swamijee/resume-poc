@@ -22,18 +22,9 @@
         <groupId>org.codehaus.mojo</groupId>
         <artifactId>exec-maven-plugin</artifactId>
         <version>1.5.0</version>
-        <executions>
-          <execution>
-            <id>ResumeCanaryV2</id>
-            <phase>test</phase>
-            <goals>
-              <goal>exec</goal>
-            </goals>
-            <configuration>
-              <mainClass>co.kuznetsov.TestAmsResumeCanaryV2</mainClass>
-            </configuration>
-          </execution>
-        </executions>
+        <configuration>
+          <mainClass>co.kuznetsov.TestAmsResumeCanaryV2</mainClass>
+        </configuration>
       </plugin>
     </plugins>
   </build>
