@@ -7,6 +7,10 @@ import software.amazon.awssdk.services.cloudwatch.CloudWatchClient;
 import software.amazon.awssdk.services.cloudwatch.model.MetricDatum;
 import software.amazon.awssdk.services.cloudwatch.model.PutMetricDataRequest;
 import software.amazon.awssdk.services.cloudwatch.model.StandardUnit;
+import software.amazon.awssdk.services.cloudwatchlogs.CloudWatchLogsClient;
+import software.amazon.awssdk.services.cloudwatchlogs.model.CreateLogGroupRequest;
+import software.amazon.awssdk.services.cloudwatchlogs.model.DescribeLogGroupsRequest;
+import software.amazon.awssdk.services.cloudwatchlogs.model.DescribeLogGroupsResponse;
 
 import java.time.Duration;
 import java.time.Instant;
@@ -79,6 +83,8 @@ public class TestAmsResumeCanaryV2 implements Callable<Integer> {
 
     @Override
     public Integer call() throws Exception {
+        ensureLogGroupExists();
+
         List<Thread> threads = new ArrayList<>();
 
         for (int i = 0; i < clusters; i++) {
@@ -95,6 +101,25 @@ public class TestAmsResumeCanaryV2 implements Callable<Integer> {
         }
 
         return 0;
+    }
+
+    private void ensureLogGroupExists() {
+        try (CloudWatchLogsClient cwl = CloudWatchLogsClient.builder().build(); ) {
+            Threads.retryUntilSuccess(() -> {
+                DescribeLogGroupsRequest describeLogGroup = DescribeLogGroupsRequest.builder()
+                        .logGroupNamePattern("ASv2AMSAutoPauseCanary")
+                        .build();
+                DescribeLogGroupsResponse response = cwl.describeLogGroups(describeLogGroup);
+                if (response.logGroups().isEmpty()) {
+                    CreateLogGroupRequest createLogGroup = CreateLogGroupRequest.builder()
+                            .logGroupName("ASv2AMSAutoPauseCanary")
+                            .build();
+                    cwl.createLogGroup(createLogGroup);
+                    System.out.println("Created LogGroup: \"ASv2AMSAutoPauseCanary\"");
+                }
+            });
+
+        }
     }
 
 }
