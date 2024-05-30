@@ -193,6 +193,7 @@ public class TestAmsResumeCanaryV2Worker implements Runnable {
         } catch (InterruptedException e) {
             return new ResumeStats(new ResumeOutcome(false, false, -1, true), null);
         } catch (Exception e) {
+            System.out.println("Failure to connect to " + endpoint + ":" + port);
             Exceptions.capture(e);
             return new ResumeStats(new ResumeOutcome(false, true, -1, true), null);
         }
