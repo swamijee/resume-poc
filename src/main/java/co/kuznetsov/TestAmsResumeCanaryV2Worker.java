@@ -1,6 +1,7 @@
 package co.kuznetsov;
 
 import org.apache.commons.lang.RandomStringUtils;
+import org.apache.commons.lang.math.RandomUtils;
 import software.amazon.awssdk.services.cloudwatch.CloudWatchClient;
 import software.amazon.awssdk.services.cloudwatch.model.Dimension;
 import software.amazon.awssdk.services.cloudwatch.model.MetricDatum;
@@ -53,7 +54,7 @@ public class TestAmsResumeCanaryV2Worker implements Runnable {
                 boolean ready = driveQueriesUntilSuccessful(instanceRef, endpoint, port);
                 if (ready) {
                     System.out.println("Success [" + instanceId + "]");
-                    stayIdle(instanceId, canary.inactivitySeconds);
+                    stayIdle(instanceId, canary.inactivitySeconds + rnd(120));
                     ResumeStats stats = resume(instanceRef, endpoint, port);
                     reportMetrics(instanceRef, stats);
                 } else {
@@ -64,6 +65,10 @@ public class TestAmsResumeCanaryV2Worker implements Runnable {
                 Threads.sleep(1000);
             }
         }
+    }
+
+    private int rnd(int max) {
+        return RandomUtils.nextInt(max);
     }
 
     private void stayIdle(String instanceId, int inactivitySeconds) {
