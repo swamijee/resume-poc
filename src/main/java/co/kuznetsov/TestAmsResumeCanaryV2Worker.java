@@ -42,13 +42,14 @@ public class TestAmsResumeCanaryV2Worker implements Runnable {
 
     @Override
     public void run() {
-        AtomicReference<DBCluster> clusterRef = new AtomicReference<>();
+        AtomicReference<DBCluster>   clusterRef = new AtomicReference<>();
         AtomicReference<DBInstance> instanceRef = new AtomicReference<>();
 
         while (!Thread.interrupted()) {
             if (clusterRef.get() == null && instanceRef.get() == null) {
                 provisionACluster(clusterRef, instanceRef);
             }
+
             doAutoPausing(clusterRef, instanceRef);
         }
     }
