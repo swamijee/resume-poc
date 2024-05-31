@@ -13,8 +13,8 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.Callable;
 
-@CommandLine.Command(name = "test-eni-move", mixinStandardHelpOptions = true,
-        description = "Test ENI moves")
+@CommandLine.Command(name = "test-ams-resumes", mixinStandardHelpOptions = true,
+        description = "Test AMS resumes")
 public class TestAmsResumeCanaryV2 implements Callable<Integer> {
 
     @CommandLine.Option(
@@ -79,9 +79,8 @@ public class TestAmsResumeCanaryV2 implements Callable<Integer> {
         ensureLogResourcesExist();
 
         List<Thread> threads = new ArrayList<>();
-
         for (int i = 0; i < clusters; i++) {
-            Thread t = new Thread(new TestAmsResumeCanaryV2Worker(this));
+            Thread t = new Thread(new TestAmsResumeCanaryV2Worker(this, i));
             threads.add(t);
             t.start();
         }

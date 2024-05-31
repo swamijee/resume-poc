@@ -23,9 +23,11 @@ public class TestAmsResumeCanaryV2Worker implements Runnable {
     private static final long MAX_RESUME_WAIT_MILLIS = 90000;
 
     private final TestAmsResumeCanaryV2 canary;
+    private final int workerId;
 
-    public TestAmsResumeCanaryV2Worker(TestAmsResumeCanaryV2 testAmsResumeCanaryV2) {
+    public TestAmsResumeCanaryV2Worker(TestAmsResumeCanaryV2 testAmsResumeCanaryV2, int workerId) {
         this.canary = testAmsResumeCanaryV2;
+        this.workerId = workerId;
     }
 
     @Override
@@ -80,50 +82,88 @@ public class TestAmsResumeCanaryV2Worker implements Runnable {
 
     private void provisionACluster(AtomicReference<DBCluster> clusterRef, AtomicReference<DBInstance> instanceRef) {
         try (RdsClient rds = RdsClient.builder().endpointOverride(new URI(canary.rdsEndpoint)).build()) {
-            String suffix = RandomStringUtils.randomAlphanumeric(6).toLowerCase();
+            String suffix = String.format("%03d", workerId);
             String clusterIdentifier = "persist-ams-ap-canary-c-" + suffix;
             String instanceIdentifier = "persist-ams-ap-canary-i-" + suffix;
 
-            Threads.retryUntilSuccess(() -> {
-                CreateDbClusterRequest createDbClusterRequest = CreateDbClusterRequest.builder()
-                        .tags(Tag.builder().key("asv2-ams-ap-canary").value("true").build())
-                        .engine("aurora-mysql")
-                        .dbClusterIdentifier(clusterIdentifier)
-                        .engineVersion(canary.version)
-                        .serverlessV2ScalingConfiguration(ServerlessV2ScalingConfiguration.builder()
-                                .minCapacity(0.0)
-                                .maxCapacity(8.0)
-                                .build())
-                        .vpcSecurityGroupIds(canary.securityGroup)
-                        .masterUsername(canary.username)
-                        .masterUserPassword(canary.password)
-                        .databaseName(canary.database)
-                        .build();
+            DBCluster existingCluster = describeDbCluster(rds, clusterIdentifier);
+            if (existingCluster != null) {
+                clusterRef.set(existingCluster);
+            } else {
+                Threads.retryUntilSuccess(() -> {
+                    CreateDbClusterRequest createDbClusterRequest = CreateDbClusterRequest.builder()
+                            .tags(Tag.builder().key("asv2-ams-ap-canary").value("true").build())
+                            .engine("aurora-mysql")
+                            .dbClusterIdentifier(clusterIdentifier)
+                            .engineVersion(canary.version)
+                            .serverlessV2ScalingConfiguration(ServerlessV2ScalingConfiguration.builder()
+                                    .minCapacity(0.0)
+                                    .maxCapacity(8.0)
+                                    .build())
+                            .vpcSecurityGroupIds(canary.securityGroup)
+                            .masterUsername(canary.username)
+                            .masterUserPassword(canary.password)
+                            .databaseName(canary.database)
+                            .build();
 
-                CreateDbClusterResponse createdCluster = rds.createDBCluster(createDbClusterRequest);
-                clusterRef.set(createdCluster.dbCluster());
-            });
+                    CreateDbClusterResponse createdCluster = rds.createDBCluster(createDbClusterRequest);
+                    clusterRef.set(createdCluster.dbCluster());
+                });
+            }
 
-            Threads.retryUntilSuccess(() -> {
-                CreateDbInstanceRequest createDbInstanceRequest = CreateDbInstanceRequest.builder()
-                        .dbInstanceIdentifier(instanceIdentifier)
-                        .dbClusterIdentifier(clusterIdentifier)
-                        .dbInstanceClass("db.serverless")
-                        .engine("aurora-mysql")
-                        .build();
+            DBInstance existingInstance = describeDbInstance(rds, instanceIdentifier);
+            if (existingInstance != null) {
+                instanceRef.set(existingInstance);
+            } else {
+                Threads.retryUntilSuccess(() -> {
+                    CreateDbInstanceRequest createDbInstanceRequest = CreateDbInstanceRequest.builder()
+                            .dbInstanceIdentifier(instanceIdentifier)
+                            .dbClusterIdentifier(clusterIdentifier)
+                            .dbInstanceClass("db.serverless")
+                            .engine("aurora-mysql")
+                            .build();
 
-                CreateDbInstanceResponse createdInstance = rds.createDBInstance(createDbInstanceRequest);
-                instanceRef.set(createdInstance.dbInstance());
-            });
+                    CreateDbInstanceResponse createdInstance = rds.createDBInstance(createDbInstanceRequest);
+                    instanceRef.set(createdInstance.dbInstance());
+                });
+            }
 
             System.out.println("Waiting for instance to be ready: " + instanceIdentifier);
             rds.waiter().waitUntilDBInstanceAvailable(DescribeDbInstancesRequest.builder()
-                    .dbInstanceIdentifier(instanceIdentifier)
-                    .build());
+                        .dbInstanceIdentifier(instanceIdentifier)
+                        .build());
         } catch (URISyntaxException e) {
             Exceptions.capture(e);
             System.exit(-1);
         }
+    }
+
+    private DBInstance describeDbInstance(RdsClient rds, String instanceIdentifier) {
+        AtomicReference<DBInstance> ref = new AtomicReference<>();
+        Threads.retryUntilSuccess(() -> {
+            var request = DescribeDbInstancesRequest.builder()
+                    .dbInstanceIdentifier(instanceIdentifier)
+                    .build();
+            var response = rds.describeDBInstances(request);
+            if (!response.dbInstances().isEmpty()) {
+                ref.set(response.dbInstances().get(0));
+            }
+        });
+        return ref.get();
+    }
+
+    private DBCluster describeDbCluster(RdsClient rds, String clusterIdentifier) {
+        AtomicReference<DBCluster> ref = new AtomicReference<>();
+        Threads.retryUntilSuccess(() -> {
+            var request = DescribeDbClustersRequest.builder()
+                    .dbClusterIdentifier(clusterIdentifier)
+                    .build();
+            var response = rds.describeDBClusters(request);
+            if (!response.dbClusters().isEmpty()) {
+                ref.set(response.dbClusters().get(0));
+            }
+        });
+        return ref.get();
     }
 
     private boolean driveQueriesUntilSuccessful(AtomicReference<DBInstance> instanceRef, String endpoint, int port) {

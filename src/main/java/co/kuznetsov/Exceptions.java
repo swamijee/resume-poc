@@ -1,18 +1,14 @@
 package co.kuznetsov;
 
 import org.apache.commons.lang.StringUtils;
-import org.checkerframework.checker.units.qual.A;
 
 import java.io.ByteArrayOutputStream;
 import java.io.FileOutputStream;
-import java.io.IOException;
 import java.io.PrintStream;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.security.MessageDigest;
-import java.util.ArrayList;
 import java.util.Date;
-import java.util.List;
 
 public class Exceptions {
 
@@ -21,8 +17,6 @@ public class Exceptions {
     }
 
     public static void capture(Throwable t, String message) {
-        deleteSomeFiles(100);
-
         if (StringUtils.isNotBlank(message)) {
             System.err.println(message);
             t.printStackTrace(System.err);
@@ -30,7 +24,10 @@ public class Exceptions {
 
         ByteArrayOutputStream baos = new ByteArrayOutputStream();
         try (PrintStream ps = new PrintStream(baos)) {
-            t.printStackTrace(ps);
+            StackTraceElement[] elements = t.getStackTrace();
+            if (elements != null && elements.length > 0) {
+                ps.print(t.getClass() + " at " + elements[0].getFileName() + ":" + elements[0].getLineNumber());
+            }
         } catch (Throwable tt) {
             tt.printStackTrace(System.err);
         }
@@ -45,7 +42,7 @@ public class Exceptions {
 
             ByteArrayOutputStream baos2 = new ByteArrayOutputStream();
             try (PrintStream ps = new PrintStream(baos2)) {
-                for (int i = 0; i < 8; i++) {
+                for (int i = 0; i < 4; i++) {
                     ps.printf("%02X", digest[i]);
                 }
             }
@@ -66,19 +63,6 @@ public class Exceptions {
             }
         } else {
             System.err.println("Not capturing exception to a file, already exists: " + fileName);
-        }
-    }
-
-    private static void deleteSomeFiles(int retainCount) {
-        try {
-            List<Path> paths = Files.find(Path.of("."), 1, (p, a) -> p.toFile().getAbsolutePath().contains("exception-")).toList();
-            List<Path> toRetain = new ArrayList<>(paths);
-            while (toRetain.size() > retainCount) {
-                Files.delete(toRetain.get(0));
-                toRetain.remove(0);
-            }
-        } catch (IOException e) {
-            e.printStackTrace();
         }
     }
 }
