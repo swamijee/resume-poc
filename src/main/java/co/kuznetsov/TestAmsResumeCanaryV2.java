@@ -24,6 +24,12 @@ public class TestAmsResumeCanaryV2 implements Callable<Integer> {
     public String version;
 
     @CommandLine.Option(
+            names = {"-e", "--env-name"},
+            description = "Environment name (e.g. integ, qa, us-east-1...)",
+            required = true)
+    public String envName;
+
+    @CommandLine.Option(
             names = {"-sg", "--security-group"},
             description = "Security group",
             required = true)
@@ -99,33 +105,44 @@ public class TestAmsResumeCanaryV2 implements Callable<Integer> {
         try (CloudWatchLogsClient cwl = CloudWatchLogsClient.builder().build(); ) {
             Threads.retryUntilSuccess(() -> {
                 DescribeLogGroupsRequest describeLogGroup = DescribeLogGroupsRequest.builder()
-                        .logGroupNamePattern("ASv2AMSAutoPauseCanary")
+                        .logGroupNamePattern(getLogGroupName())
                         .build();
                 DescribeLogGroupsResponse response = cwl.describeLogGroups(describeLogGroup);
                 if (response.logGroups().isEmpty()) {
                     CreateLogGroupRequest createLogGroup = CreateLogGroupRequest.builder()
-                            .logGroupName("ASv2AMSAutoPauseCanary")
+                            .logGroupName(getLogGroupName())
                             .build();
                     cwl.createLogGroup(createLogGroup);
-                    System.out.println("Created LogGroup: \"ASv2AMSAutoPauseCanary\"");
+                    System.out.println("Created LogGroup: " + getLogGroupName());
                 }
             });
             Threads.retryUntilSuccess(() -> {
                 DescribeLogStreamsRequest describeLogStreams = DescribeLogStreamsRequest.builder()
-                        .logGroupName("ASv2AMSAutoPauseCanary")
-                        .logStreamNamePrefix("resume-outcomes.log")
+                        .logGroupName(getLogGroupName())
+                        .logStreamNamePrefix(getLogStreamName())
                         .build();
                 DescribeLogStreamsResponse response = cwl.describeLogStreams(describeLogStreams);
                 if (response.logStreams().isEmpty()) {
                     CreateLogStreamRequest createLogStream = CreateLogStreamRequest.builder()
-                            .logGroupName("ASv2AMSAutoPauseCanary")
-                            .logStreamName("resume-outcomes.log")
+                            .logGroupName(getLogGroupName())
+                            .logStreamName(getLogStreamName())
                             .build();
                     cwl.createLogStream(createLogStream);
-                    System.out.println("Created LogStream: \"resume-outcomes.log\"");
+                    System.out.println("Created LogStream: " + getLogStreamName());
                 }
             });
         }
     }
 
+    protected String getLogGroupName() {
+        return "ASv2AMSAutoPauseCanary-" + envName;
+    }
+
+    public String getMetricsNamespace() {
+        return "ASv2AMSAutoPauseCanary-" + envName;
+    }
+
+    public String getLogStreamName() {
+        return "resume-outcomes.log";
+    }
 }

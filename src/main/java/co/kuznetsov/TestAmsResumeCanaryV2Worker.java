@@ -1,6 +1,5 @@
 package co.kuznetsov;
 
-import org.apache.commons.lang.RandomStringUtils;
 import org.apache.commons.lang.math.RandomUtils;
 import software.amazon.awssdk.services.cloudwatch.CloudWatchClient;
 import software.amazon.awssdk.services.cloudwatch.model.Dimension;
@@ -10,7 +9,18 @@ import software.amazon.awssdk.services.cloudwatch.model.StandardUnit;
 import software.amazon.awssdk.services.cloudwatchlogs.CloudWatchLogsClient;
 import software.amazon.awssdk.services.cloudwatchlogs.model.*;
 import software.amazon.awssdk.services.rds.RdsClient;
-import software.amazon.awssdk.services.rds.model.*;
+import software.amazon.awssdk.services.rds.model.CreateDbClusterRequest;
+import software.amazon.awssdk.services.rds.model.CreateDbClusterResponse;
+import software.amazon.awssdk.services.rds.model.CreateDbInstanceRequest;
+import software.amazon.awssdk.services.rds.model.CreateDbInstanceResponse;
+import software.amazon.awssdk.services.rds.model.DBCluster;
+import software.amazon.awssdk.services.rds.model.DBInstance;
+import software.amazon.awssdk.services.rds.model.DbClusterNotFoundException;
+import software.amazon.awssdk.services.rds.model.DbInstanceNotFoundException;
+import software.amazon.awssdk.services.rds.model.DescribeDbClustersRequest;
+import software.amazon.awssdk.services.rds.model.DescribeDbInstancesRequest;
+import software.amazon.awssdk.services.rds.model.ServerlessV2ScalingConfiguration;
+import software.amazon.awssdk.services.rds.model.Tag;
 
 import java.net.URI;
 import java.net.URISyntaxException;
@@ -351,7 +361,7 @@ public class TestAmsResumeCanaryV2Worker implements Runnable {
                             failureInstance,
                             clientInterrupt,
                             clientInterruptInstance
-                    ).namespace("ASv2AMSAutoPauseCanary")
+                    ).namespace(canary.getMetricsNamespace())
                     .build();
 
             Threads.retryUntilSuccess(() -> {
@@ -375,8 +385,8 @@ public class TestAmsResumeCanaryV2Worker implements Runnable {
             Threads.retryUntilSuccess(() -> {
                 cwl.putLogEvents(
                     PutLogEventsRequest.builder()
-                            .logGroupName("ASv2AMSAutoPauseCanary")
-                            .logStreamName("resume-outcomes.log")
+                            .logGroupName(canary.getLogGroupName())
+                            .logStreamName(canary.getLogStreamName())
                             .logEvents(inputLogEvents)
                             .build()
 
