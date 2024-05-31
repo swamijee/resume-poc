@@ -141,12 +141,16 @@ public class TestAmsResumeCanaryV2Worker implements Runnable {
     private DBInstance describeDbInstance(RdsClient rds, String instanceIdentifier) {
         AtomicReference<DBInstance> ref = new AtomicReference<>();
         Threads.retryUntilSuccess(() -> {
-            var request = DescribeDbInstancesRequest.builder()
-                    .dbInstanceIdentifier(instanceIdentifier)
-                    .build();
-            var response = rds.describeDBInstances(request);
-            if (!response.dbInstances().isEmpty()) {
-                ref.set(response.dbInstances().get(0));
+            try {
+                var request = DescribeDbInstancesRequest.builder()
+                        .dbInstanceIdentifier(instanceIdentifier)
+                        .build();
+                var response = rds.describeDBInstances(request);
+                if (!response.dbInstances().isEmpty()) {
+                    ref.set(response.dbInstances().get(0));
+                }
+            } catch (DbInstanceNotFoundException e) {
+                ref.set(null);
             }
         });
         return ref.get();
@@ -155,12 +159,16 @@ public class TestAmsResumeCanaryV2Worker implements Runnable {
     private DBCluster describeDbCluster(RdsClient rds, String clusterIdentifier) {
         AtomicReference<DBCluster> ref = new AtomicReference<>();
         Threads.retryUntilSuccess(() -> {
-            var request = DescribeDbClustersRequest.builder()
-                    .dbClusterIdentifier(clusterIdentifier)
-                    .build();
-            var response = rds.describeDBClusters(request);
-            if (!response.dbClusters().isEmpty()) {
-                ref.set(response.dbClusters().get(0));
+            try {
+                var request = DescribeDbClustersRequest.builder()
+                        .dbClusterIdentifier(clusterIdentifier)
+                        .build();
+                var response = rds.describeDBClusters(request);
+                if (!response.dbClusters().isEmpty()) {
+                    ref.set(response.dbClusters().get(0));
+                }
+            } catch (DbClusterNotFoundException e) {
+                ref.set(null);
             }
         });
         return ref.get();
