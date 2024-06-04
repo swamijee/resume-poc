@@ -39,7 +39,7 @@ public class HFDoorKnockRunnable implements Runnable {
         boolean drop = false;
 
         while ((System.currentTimeMillis() - start) < maxWaitMillis) {
-            try (var conn = DriverManager.getConnection("jdbc:" + engineDriver + "://" + endpoint + ":" + port, properties)) {
+            try (var conn = DriverManager.getConnection("jdbc:" + engineDriver + "://" + endpoint + ":" + port + "/", properties)) {
                 conn.createStatement().execute("SELECT 1");
             } catch (SQLException e) {
                 drop = true;
