@@ -42,6 +42,7 @@ public class HFDoorKnockRunnable implements Runnable {
             try (var conn = DriverManager.getConnection("jdbc:" + engineDriver + "://" + endpoint + ":" + port + "/", properties)) {
                 conn.createStatement().execute("SELECT 1");
             } catch (SQLException e) {
+                System.out.println(e);
                 drop = true;
                 continue;
             }
