@@ -12,11 +12,17 @@ public class HFDoorKnockRunnable implements Runnable {
     private final String username;
     private final String password;
     private final long maxWaitMillis;
+    private final String engineDriver;
 
     public HFDoorKnockRunnable(AtomicReference<ResumeOutcome> outcomeRef, String endpoint, int port, String username, String password, long maxWaitMillis) {
+        this(outcomeRef, endpoint, port, "mysql", username, password, maxWaitMillis);
+    }
+
+    public HFDoorKnockRunnable(AtomicReference<ResumeOutcome> outcomeRef, String endpoint, int port, String engineDriver, String username, String password, long maxWaitMillis) {
         this.outcomeRef = outcomeRef;
         this.endpoint = endpoint;
         this.port = port;
+        this.engineDriver = engineDriver;
         this.username = username;
         this.password = password;
         this.maxWaitMillis = maxWaitMillis;
@@ -33,7 +39,7 @@ public class HFDoorKnockRunnable implements Runnable {
         boolean drop = false;
 
         while ((System.currentTimeMillis() - start) < maxWaitMillis) {
-            try (var conn = DriverManager.getConnection("jdbc:mysql://" + endpoint + ":" + port, properties)) {
+            try (var conn = DriverManager.getConnection("jdbc:" + engineDriver + "://" + endpoint + ":" + port, properties)) {
                 conn.createStatement().execute("SELECT 1");
             } catch (SQLException e) {
                 drop = true;

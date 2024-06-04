@@ -23,7 +23,7 @@
         <artifactId>exec-maven-plugin</artifactId>
         <version>1.5.0</version>
         <configuration>
-          <mainClass>co.kuznetsov.TestAmsResumeCanaryV2</mainClass>
+          <mainClass>co.kuznetsov.TestApgResumeCanaryV2</mainClass>
         </configuration>
       </plugin>
     </plugins>
@@ -36,6 +36,11 @@
       <version>8.4.0</version>
     </dependency>
     <dependency>
+      <groupId>org.postgresql</groupId>
+      <artifactId>postgresql</artifactId>
+      <version>42.7.3</version>
+    </dependency>
+  <dependency>
       <groupId>info.picocli</groupId>
       <artifactId>picocli</artifactId>
       <version>4.7.5</version>
