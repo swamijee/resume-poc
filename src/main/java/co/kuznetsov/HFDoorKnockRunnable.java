@@ -39,7 +39,7 @@ public class HFDoorKnockRunnable implements Runnable {
         properties.setProperty("password", password);
         properties.setProperty("connectTimeout", "500");
 
-        String dbNameSuffix = Strings.isNullOrEmpty(dbName) ? ""  : dbName + "/";
+        String dbNameSuffix = Strings.isNullOrEmpty(dbName) ? ""  : dbName;
 
         long start = System.currentTimeMillis();
         boolean drop = false;
