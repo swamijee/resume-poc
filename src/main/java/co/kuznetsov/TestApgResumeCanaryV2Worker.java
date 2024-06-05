@@ -235,8 +235,10 @@ public class TestApgResumeCanaryV2Worker implements Runnable {
                 outcomeHfRef,
                 endpoint,
                 port,
+                "postgresql",
                 canary.username,
                 canary.password,
+                canary.database,
                 MAX_RESUME_WAIT_MILLIS
         ));
 

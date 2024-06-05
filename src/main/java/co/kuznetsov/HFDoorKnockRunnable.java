@@ -39,13 +39,11 @@ public class HFDoorKnockRunnable implements Runnable {
         properties.setProperty("password", password);
         properties.setProperty("connectTimeout", "500");
 
-        String dbNameSuffix = Strings.isNullOrEmpty(dbName) ? ""  : dbName;
-
         long start = System.currentTimeMillis();
         boolean drop = false;
 
         while ((System.currentTimeMillis() - start) < maxWaitMillis) {
-            try (var conn = DriverManager.getConnection("jdbc:" + engineDriver + "://" + endpoint + ":" + port + "/" + dbNameSuffix , properties)) {
+            try (var conn = DriverManager.getConnection("jdbc:" + engineDriver + "://" + endpoint + ":" + port + "/" + dbName, properties)) {
                 conn.createStatement().execute("SELECT 1");
             } catch (SQLException e) {
                 System.out.println(e);

@@ -1,6 +1,5 @@
 package co.kuznetsov;
 
-import java.sql.Connection;
 import java.sql.DriverManager;
 import java.sql.SQLException;
 import java.util.Properties;
@@ -12,16 +11,25 @@ public class DoorKnockRunnable implements Runnable {
     private final int port;
     private final String username;
     private final String password;
+    private final String dbName;
     private final long maxWaitMillis;
+    private final String engineDriver;
 
     public DoorKnockRunnable(AtomicReference<ResumeOutcome> outcomeRef, String endpoint, int port, String username, String password, long maxWaitMillis) {
+        this(outcomeRef, endpoint, port, "mysql", username, password, "", maxWaitMillis);
+    }
+
+    public DoorKnockRunnable(AtomicReference<ResumeOutcome> outcomeRef, String endpoint, int port, String engineDriver, String username, String password, String dbName, long maxWaitMillis) {
         this.outcomeRef = outcomeRef;
         this.endpoint = endpoint;
         this.port = port;
+        this.engineDriver = engineDriver;
         this.username = username;
         this.password = password;
+        this.dbName = dbName;
         this.maxWaitMillis = maxWaitMillis;
     }
+
 
     @Override
     public void run() {
@@ -35,7 +43,7 @@ public class DoorKnockRunnable implements Runnable {
 
         while ((System.currentTimeMillis() - start) < maxWaitMillis) {
             System.out.println("Connecting to DB...");
-            try (var conn = DriverManager.getConnection("jdbc:mysql://" + endpoint + ":" + port, properties)) {
+            try (var conn = DriverManager.getConnection("jdbc:" + engineDriver + "://" + endpoint + ":" + port + "/" + dbName, properties)) {
                 conn.createStatement().execute("SELECT 1");
                 System.out.println("Success!");
             } catch (SQLException e) {
