@@ -227,8 +227,10 @@ public class TestApgResumeCanaryV2Worker implements Runnable {
                 outcomeRef,
                 endpoint,
                 port,
+                "postgresql",
                 canary.username,
                 canary.password,
+                canary.database,
                 MAX_RESUME_WAIT_MILLIS
         ));
         Thread connectionThreadHF = new Thread(new HFDoorKnockRunnable(
