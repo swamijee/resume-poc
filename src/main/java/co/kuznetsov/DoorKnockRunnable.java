@@ -47,6 +47,7 @@ public class DoorKnockRunnable implements Runnable {
                 conn.createStatement().execute("SELECT 1");
                 System.out.println("Success!");
             } catch (SQLException e) {
+                System.out.println(e);
                 Exceptions.capture(e);
                 drop = true;
                 continue;
