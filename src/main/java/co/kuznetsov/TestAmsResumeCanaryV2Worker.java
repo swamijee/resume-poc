@@ -279,7 +279,7 @@ public class TestAmsResumeCanaryV2Worker implements Runnable {
                     .metricName("noSleep")
                     .unit(StandardUnit.COUNT)
                     .timestamp(now)
-                    .value((double) (outcome.isFailure() ? 0 : outcome.didSleep() ? 0 : 1)
+                    .value((double) (outcome.isFailure() ? 0 : outcome.didSleep() ? 0 : 1))
                     .build();
             var failure = MetricDatum.builder()
                     .metricName("failure")
