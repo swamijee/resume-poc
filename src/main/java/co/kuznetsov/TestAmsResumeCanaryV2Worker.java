@@ -273,7 +273,13 @@ public class TestAmsResumeCanaryV2Worker implements Runnable {
                     .metricName("success")
                     .unit(StandardUnit.COUNT)
                     .timestamp(now)
-                    .value((double) (outcome.isFailure() ? 0 : 1))
+                    .value((double) (outcome.isFailure() ? 0 : outcome.didSleep() ? 1 : 0))
+                    .build();
+            var noSleep = MetricDatum.builder()
+                    .metricName("noSleep")
+                    .unit(StandardUnit.COUNT)
+                    .timestamp(now)
+                    .value((double) (outcome.isFailure() ? 0 : outcome.didSleep() ? 0 : 1)
                     .build();
             var failure = MetricDatum.builder()
                     .metricName("failure")
@@ -317,7 +323,14 @@ public class TestAmsResumeCanaryV2Worker implements Runnable {
                     .unit(StandardUnit.COUNT)
                     .dimensions(instanceDimension)
                     .timestamp(now)
-                    .value((double) (outcome.isFailure() ? 0 : 1))
+                    .value((double) (outcome.isFailure() ? 0 : outcome.didSleep() ? 1 : 0))
+                    .build();
+            var noSleepInstance = MetricDatum.builder()
+                    .metricName("noSleep")
+                    .unit(StandardUnit.COUNT)
+                    .dimensions(instanceDimension)
+                    .timestamp(now)
+                    .value((double) (outcome.isFailure() ? 0 : outcome.didSleep() ? 0 : 1))
                     .build();
             var failureInstance = MetricDatum.builder()
                     .metricName("failure")
@@ -358,6 +371,8 @@ public class TestAmsResumeCanaryV2Worker implements Runnable {
                             resumeDurationHighResInstance,
                             success,
                             successInstance,
+                            noSleep,
+                            noSleepInstance,
                             failure,
                             failureInstance,
                             clientInterrupt,

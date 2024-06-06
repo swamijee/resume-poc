@@ -17,6 +17,10 @@ public class ResumeStats {
         return normal.isFailure() || (highRes != null && highRes.isFailure());
     }
 
+    public boolean didSleep() {
+        return normal.getDuration() > 250;
+    }
+
     public boolean isConnectionDrop() {
         return normal.isConnectionDrop();
     }
