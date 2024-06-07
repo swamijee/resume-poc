@@ -394,9 +394,10 @@ public class TestApgResumeCanaryV2Worker implements Runnable {
             List<InputLogEvent> inputLogEvents = new ArrayList<>();
             inputLogEvents.add(InputLogEvent.builder()
                             .message(String.format(
-                                    "Resume for instanceId: %s. Outcome: [success=%b, clientInterrupt=%b, connectionDrop=%b, duration=%d, durationHighRes=%d]",
+                                    "Resume for instanceId: %s. Outcome: [success=%b, noSleep=%b, clientInterrupt=%b, connectionDrop=%b, duration=%d, durationHighRes=%d]",
                                     instanceRef.get().dbInstanceIdentifier(),
-                                    !outcome.isFailure(),
+                                    !outcome.isFailure() && outcome.didSleep(),
+                                    !outcome.isFailure() && !outcome.didSleep(),
                                     outcome.isClientInterrupt(),
                                     outcome.isConnectionDrop(),
                                     outcome.getResumeDuration(),
