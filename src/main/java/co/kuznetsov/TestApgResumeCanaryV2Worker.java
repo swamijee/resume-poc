@@ -1,5 +1,6 @@
 package co.kuznetsov;
 
+import com.google.common.collect.ImmutableList;
 import org.apache.commons.lang.math.RandomUtils;
 import software.amazon.awssdk.services.cloudwatch.CloudWatchClient;
 import software.amazon.awssdk.services.cloudwatch.model.Dimension;
@@ -107,7 +108,7 @@ public class TestApgResumeCanaryV2Worker implements Runnable {
                             .tags(Tag.builder().key("asv2-apg-ap-canary").value("true").build())
                             .engine("aurora-postgresql")
                             .dbClusterIdentifier(clusterIdentifier)
-                            .engineVersion(canary.version)
+                            .engineVersion(getRandomApgEngineVersion(workerId)) //Override the CLI specified engine version for now.
                             .serverlessV2ScalingConfiguration(ServerlessV2ScalingConfiguration.builder()
                                     .minCapacity(0.0)
                                     .maxCapacity(8.0)
@@ -117,7 +118,6 @@ public class TestApgResumeCanaryV2Worker implements Runnable {
                             .masterUserPassword(canary.password)
                             .databaseName(canary.database)
                             .build();
-
                     CreateDbClusterResponse createdCluster = rds.createDBCluster(createDbClusterRequest);
                     clusterRef.set(createdCluster.dbCluster());
                 });
@@ -368,22 +368,85 @@ public class TestApgResumeCanaryV2Worker implements Runnable {
                     .unit(StandardUnit.MILLISECONDS)
                     .build();
 
+            Dimension engineVersionDimension = Dimension.builder()
+                    .name("engineVersion")
+                    .value(instanceRef.get().engineVersion())
+                    .build();
+
+            var clientInterruptEngineVersion = MetricDatum.builder()
+                    .metricName("clientInterrupt")
+                    .unit(StandardUnit.COUNT)
+                    .dimensions(engineVersionDimension)
+                    .timestamp(now)
+                    .value((double) (outcome.isClientInterrupt() ? 1 : 0))
+                    .build();
+            var successEngineVersion = MetricDatum.builder()
+                    .metricName("success")
+                    .unit(StandardUnit.COUNT)
+                    .dimensions(engineVersionDimension)
+                    .timestamp(now)
+                    .value((double) (outcome.isFailure() ? 0 : outcome.didSleep() ? 1 : 0))
+                    .build();
+            var noSleepEngineVersion = MetricDatum.builder()
+                    .metricName("noSleep")
+                    .unit(StandardUnit.COUNT)
+                    .dimensions(engineVersionDimension)
+                    .timestamp(now)
+                    .value((double) (outcome.isFailure() ? 0 : outcome.didSleep() ? 0 : 1))
+                    .build();
+            var failureEngineVersion = MetricDatum.builder()
+                    .metricName("failure")
+                    .unit(StandardUnit.COUNT)
+                    .dimensions(engineVersionDimension)
+                    .timestamp(now)
+                    .value((double) (outcome.isFailure() ? 1 : 0))
+                    .build();
+            var connectionEngineVersion = MetricDatum.builder()
+                    .metricName("connectionDrop")
+                    .unit(StandardUnit.COUNT)
+                    .dimensions(engineVersionDimension)
+                    .timestamp(now)
+                    .value((double) (outcome.isConnectionDrop() ? 1 : 0))
+                    .build();
+            var resumeDurationEngineVersion = MetricDatum.builder()
+                    .metricName("resumeDuration")
+                    .value((double) outcome.getResumeDuration())
+                    .timestamp(now)
+                    .unit(StandardUnit.MILLISECONDS)
+                    .dimensions(engineVersionDimension)
+                    .build();
+            var resumeDurationHighResEngineVersion = MetricDatum.builder()
+                    .metricName("resumeDurationHighRes")
+                    .value((double) outcome.getResumeDurationHighRes())
+                    .timestamp(now)
+                    .dimensions(engineVersionDimension)
+                    .unit(StandardUnit.MILLISECONDS)
+                    .build();
+
+
             var dataRequest = PutMetricDataRequest.builder()
                     .metricData(
                             connectionDrop,
                             connectionDropInstance,
+                            connectionEngineVersion,
                             resumeDuration,
                             resumeDurationInstance,
+                            resumeDurationEngineVersion,
                             resumeDurationHighRes,
                             resumeDurationHighResInstance,
+                            resumeDurationHighResEngineVersion,
                             success,
                             successInstance,
+                            successEngineVersion,
                             noSleep,
                             noSleepInstance,
+                            noSleepEngineVersion,
                             failure,
                             failureInstance,
+                            failureEngineVersion,
                             clientInterrupt,
-                            clientInterruptInstance
+                            clientInterruptInstance,
+                            clientInterruptEngineVersion
                     ).namespace(canary.getMetricsNamespace())
                     .build();
 
@@ -394,8 +457,9 @@ public class TestApgResumeCanaryV2Worker implements Runnable {
             List<InputLogEvent> inputLogEvents = new ArrayList<>();
             inputLogEvents.add(InputLogEvent.builder()
                             .message(String.format(
-                                    "Resume for instanceId: %s. Outcome: [success=%b, noSleep=%b, clientInterrupt=%b, connectionDrop=%b, duration=%d, durationHighRes=%d]",
+                                    "Resume for instanceId: %s , engineVersion: %s. Outcome: [success=%b, noSleep=%b, clientInterrupt=%b, connectionDrop=%b, duration=%d, durationHighRes=%d]",
                                     instanceRef.get().dbInstanceIdentifier(),
+                                    instanceRef.get().engineVersion(),
                                     !outcome.isFailure() && outcome.didSleep(),
                                     !outcome.isFailure() && !outcome.didSleep(),
                                     outcome.isClientInterrupt(),
@@ -421,4 +485,8 @@ public class TestApgResumeCanaryV2Worker implements Runnable {
         }
     }
 
+    private String getRandomApgEngineVersion(int index) {
+        var supportedEngineVersions = ImmutableList.of("16.3", "15.7", "14.12", "13.15");
+        return supportedEngineVersions.get(index % supportedEngineVersions.size());
+    }
 }
