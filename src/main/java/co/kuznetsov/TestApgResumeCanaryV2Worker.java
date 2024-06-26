@@ -32,7 +32,7 @@ import java.util.List;
 import java.util.concurrent.atomic.AtomicReference;
 
 public class TestApgResumeCanaryV2Worker implements Runnable {
-    private static final long MAX_RESUME_WAIT_MILLIS = 90000;
+    private static final long MAX_RESUME_WAIT_MILLIS = 5 * 60 * 1000;
 
     private final TestApgResumeCanaryV2 canary;
     private final int workerId;
